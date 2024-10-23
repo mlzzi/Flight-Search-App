@@ -21,6 +21,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mluzzi.flightseachapp.data.Airport
 import com.mluzzi.flightseachapp.ui.theme.FlightSeachAppTheme
+import kotlinx.coroutines.flow.StateFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,7 +45,8 @@ fun HomeScreen(
     val searchText = viewModel.searchText.collectAsState().value
     val focusManager = LocalFocusManager.current
     val airportSuggestions = viewModel.flightsSuggestions.collectAsState().value
-    val flights = viewModel.flights.collectAsState(initial = emptyList()).value
+    val flightsResult = viewModel.flightsResult.collectAsState().value
+    val selectedAirport = viewModel.selectedAirport.collectAsState().value
 
     Scaffold(
         topBar = {
@@ -64,7 +67,6 @@ fun HomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            var selectedAirport by remember { mutableStateOf<Airport?>(null) }
 
             OutlinedTextField(
                 value = searchText,
@@ -74,7 +76,7 @@ fun HomeScreen(
                 shape = RoundedCornerShape(32.dp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                 keyboardActions = KeyboardActions(
-                    onDone = {
+                    onGo = {
                         focusManager.clearFocus()
                     }
                 )
@@ -83,12 +85,15 @@ fun HomeScreen(
             if (searchText.isNotEmpty()) {
                 LoadSearchSuggestions(
                     flightsSuggestions = airportSuggestions,
-                    selectedAirport = { selectedAirport = it },
+                    selectedAirport = { viewModel.selectAirport(it) },
                     seachText = { viewModel.onSearchTextChange("") }
                 )
             }
-
-            selectedAirport?.let { LoadFlightsFromSelectedAirport(it, flights) }
+            if (selectedAirport != null) {
+                key(selectedAirport.iataCode) {
+                    LoadFlightsFromSelectedAirport(selectedAirport!!, flightsResult)
+                }
+            }
         }
     }
 }
@@ -99,6 +104,7 @@ fun LoadSearchSuggestions(
     seachText: () -> Unit,
     selectedAirport: (Airport) -> Unit,
 ) {
+    val focusManager = LocalFocusManager.current
 
     LazyColumn(
         modifier = Modifier
@@ -115,6 +121,7 @@ fun LoadSearchSuggestions(
                     .clickable {
                         selectedAirport(flightsSuggestions[airport])
                         seachText()
+                        focusManager.clearFocus()
                     },
                 horizontalArrangement = Arrangement.Start
             ) {
@@ -132,7 +139,7 @@ fun LoadSearchSuggestions(
 @Composable
 fun LoadFlightsFromSelectedAirport(
     selectedAirport: Airport,
-    flights: List<Airport>
+    flightResult: List<Airport>
 ) {
     LazyColumn(
         modifier = Modifier
@@ -141,43 +148,43 @@ fun LoadFlightsFromSelectedAirport(
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.Top
     ) {
-        items(flights.size) { flight ->
+        items(flightResult.size) { flight ->
             FlightItem(
                 departAirport = selectedAirport,
-                arriveAirport = flights[flight]
+                arriveAirport = flightResult[flight]
             )
         }
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun LoadFlightsFromSelectedAirportPreview() {
-    FlightSeachAppTheme {
-        LoadFlightsFromSelectedAirport(
-            selectedAirport = Airport(
-                id = 1,
-                iataCode = "OPO",
-                name = "Francisco Sá Carneiro Airport",
-                passengers = 10000000
-            ),
-            flights = listOf(
-                Airport(
-                    id = 2,
-                    iataCode = "LIS",
-                    name = "Humberto Delgado Airport",
-                    passengers = 8000000
-                ),
-                Airport(
-                    id = 3,
-                    iataCode = "MAD",
-                    name = "Adolfo Suárez Madrid–Barajas Airport",
-                    passengers = 12000000
-                )
-            )
-        )
-    }
-}
+//@Preview(showBackground = true)
+//@Composable
+//fun LoadFlightsFromSelectedAirportPreview() {
+//    FlightSeachAppTheme {
+//        LoadFlightsFromSelectedAirport(
+//            selectedAirport = Airport(
+//                id = 1,
+//                iataCode = "OPO",
+//                name = "Francisco Sá Carneiro Airport",
+//                passengers = 10000000
+//            ),
+//            flights = listOf(
+//                Airport(
+//                    id = 2,
+//                    iataCode = "LIS",
+//                    name = "Humberto Delgado Airport",
+//                    passengers = 8000000
+//                ),
+//                Airport(
+//                    id = 3,
+//                    iataCode = "MAD",
+//                    name = "Adolfo Suárez Madrid–Barajas Airport",
+//                    passengers = 12000000
+//                )
+//            )
+//        )
+//    }
+//}
 
 //@Preview(showBackground = true)
 //@Composable

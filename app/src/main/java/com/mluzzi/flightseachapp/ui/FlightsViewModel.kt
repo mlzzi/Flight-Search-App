@@ -50,7 +50,25 @@ class FlightsViewModel(private val flightRepositoryImpl: FlightRepositoryImpl) :
         _searchText.value = text
     }
 
-    val flights: Flow<List<Airport>> = flightRepositoryImpl.getAllAirports()
+    private val _selectedAirport = MutableStateFlow<Airport?>(null)
+    val selectedAirport: StateFlow<Airport?> = _selectedAirport.asStateFlow()
+
+    val flightsResult: StateFlow<List<Airport>> = combine(
+        flightRepositoryImpl.getAllAirports(),
+        selectedAirport
+    ) {
+        allAirports, selectedAirport ->
+        allAirports.filter { it.iataCode != selectedAirport?.iataCode }
+    }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    fun selectAirport(airport: Airport) {
+        _selectedAirport.value = airport
+    }
 
     fun insertFavorite(favorite: Favorite) {
         flightRepositoryImpl.insertFavorite(favorite)

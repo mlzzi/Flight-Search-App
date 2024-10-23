@@ -63,12 +63,12 @@ fun FlightItem(
                 Spacer(modifier = Modifier.height(4.dp))
                 Row {
                     Text(
-                        departAirport.iataCode,
+                        arriveAirport.iataCode,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(end = 4.dp)
                     )
                     Text(
-                        departAirport.name,
+                        arriveAirport.name,
                         fontWeight = FontWeight.Light
                     )
                 }
