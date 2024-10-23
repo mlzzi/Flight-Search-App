@@ -12,6 +12,7 @@ import com.mluzzi.flightseachapp.ApplicationApp
 import com.mluzzi.flightseachapp.data.Airport
 import com.mluzzi.flightseachapp.data.Favorite
 import com.mluzzi.flightseachapp.data.FlightRepositoryImpl
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
@@ -24,6 +25,8 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class FlightsViewModel(private val flightRepositoryImpl: FlightRepositoryImpl) : ViewModel() {
     private val _searchText = MutableStateFlow("")
@@ -56,8 +59,7 @@ class FlightsViewModel(private val flightRepositoryImpl: FlightRepositoryImpl) :
     val flightsResult: StateFlow<List<Airport>> = combine(
         flightRepositoryImpl.getAllAirports(),
         selectedAirport
-    ) {
-        allAirports, selectedAirport ->
+    ) { allAirports, selectedAirport ->
         allAirports.filter { it.iataCode != selectedAirport?.iataCode }
     }
         .stateIn(
@@ -70,15 +72,44 @@ class FlightsViewModel(private val flightRepositoryImpl: FlightRepositoryImpl) :
         _selectedAirport.value = airport
     }
 
-    fun insertFavorite(favorite: Favorite) {
-        flightRepositoryImpl.insertFavorite(favorite)
+    suspend fun getFavoriteId(departureCode: String, destinationCode: String): Int {
+        return withContext(Dispatchers.IO) {
+            flightRepositoryImpl.getFavoriteId(departureCode, destinationCode)
+        }
     }
 
-    fun deleteFavorite(favorite: Favorite) {
-        flightRepositoryImpl.deleteFavorite(favorite)
+    fun insertOrDeleteFavorite(departAirport: Airport, arriveAirport: Airport) {
+        viewModelScope.launch {
+            val isFavorite = flightRepositoryImpl.isFavorite(departAirport.iataCode, arriveAirport.iataCode)
+            if (isFavorite) {
+                val id = flightRepositoryImpl.getFavoriteId(departAirport.iataCode, arriveAirport.iataCode)
+                flightRepositoryImpl.deleteFavoriteById(id)
+            } else {
+                flightRepositoryImpl.insertFavorite(
+                    Favorite(
+                        id = 0,  // ID será gerado automaticamente
+                        departureCode = departAirport.iataCode,
+                        destinationCode = arriveAirport.iataCode
+                    )
+                )
+            }
+        }
     }
 
     val favoriteFlights: Flow<List<Favorite>> = flightRepositoryImpl.getAllFavorites()
+
+    fun isFavorite(departureCode: String, destinationCode: String): Boolean {
+        var isFavorite = false
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                if (flightRepositoryImpl.isFavorite(departureCode, destinationCode)) {
+                    isFavorite = true
+                }
+            }
+        }
+        return isFavorite
+    }
+
 
     companion object {
         val factory: ViewModelProvider.Factory = viewModelFactory {

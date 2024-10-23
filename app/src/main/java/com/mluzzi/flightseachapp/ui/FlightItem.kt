@@ -1,5 +1,6 @@
 package com.mluzzi.flightseachapp.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,21 +16,25 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.mluzzi.flightseachapp.data.Airport
-import com.mluzzi.flightseachapp.data.AirportDao
 
 @Composable
 fun FlightItem(
     departAirport: Airport,
     arriveAirport: Airport,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: FlightsViewModel
 ) {
+    val isFavorite = viewModel.favoriteFlights.collectAsState(initial = emptyList())
+        .value.any { it.departureCode == departAirport.iataCode && it.destinationCode == arriveAirport.iataCode }
+//    var id by remember { mutableStateOf(0) }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -76,7 +81,10 @@ fun FlightItem(
             Icon(
                 imageVector = Icons.Filled.Star,
                 contentDescription = "Favorite",
-                tint = Color.Yellow
+                modifier = Modifier.clickable {
+                    viewModel.insertOrDeleteFavorite(departAirport, arriveAirport)
+                },
+                tint = if (isFavorite) Color.Yellow else Color.Gray
             )
         }
     }

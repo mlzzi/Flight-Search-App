@@ -27,15 +27,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mluzzi.flightseachapp.data.Airport
-import com.mluzzi.flightseachapp.ui.theme.FlightSeachAppTheme
-import kotlinx.coroutines.flow.StateFlow
+import com.mluzzi.flightseachapp.data.Favorite
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +46,8 @@ fun HomeScreen(
     val airportSuggestions = viewModel.flightsSuggestions.collectAsState().value
     val flightsResult = viewModel.flightsResult.collectAsState().value
     val selectedAirport = viewModel.selectedAirport.collectAsState().value
+    var showSuggestions by remember { mutableStateOf(true) }
+    val favoriteFlights = viewModel.favoriteFlights.collectAsState(initial = emptyList()).value
 
     Scaffold(
         topBar = {
@@ -72,7 +73,13 @@ fun HomeScreen(
                 value = searchText,
                 onValueChange = { viewModel.onSearchTextChange(it) },
                 label = { Text("Pesquisar") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { focusState ->
+                    if (focusState.isFocused) {
+                        showSuggestions = true
+                    }
+                },
                 shape = RoundedCornerShape(32.dp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                 keyboardActions = KeyboardActions(
@@ -82,16 +89,22 @@ fun HomeScreen(
                 )
             )
 
-            if (searchText.isNotEmpty()) {
+            if (searchText.isEmpty()) {
+                LoadFavorites(favoriteFlights)
+            }
+
+            if (searchText.isNotEmpty() && showSuggestions) {
                 LoadSearchSuggestions(
+                    viewModel = viewModel,
                     flightsSuggestions = airportSuggestions,
                     selectedAirport = { viewModel.selectAirport(it) },
-                    seachText = { viewModel.onSearchTextChange("") }
+                    seachText = { selectedAirport?.iataCode?.let { viewModel.onSearchTextChange(it) } },
+                    onClimChange = { showSuggestions = false }
                 )
             }
             if (selectedAirport != null) {
                 key(selectedAirport.iataCode) {
-                    LoadFlightsFromSelectedAirport(selectedAirport!!, flightsResult)
+                    LoadFlightsFromSelectedAirport(selectedAirport, flightsResult)
                 }
             }
         }
@@ -99,10 +112,33 @@ fun HomeScreen(
 }
 
 @Composable
+fun LoadFavorites(
+    favoriteFlights: List<Favorite>
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp, start = 4.dp, end = 4.dp),
+        horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.Top
+    ) {
+        items(favoriteFlights.size) { favorite ->
+            FlightItem(
+                departAirport = favoriteFlights.get(favorite).departureCode,
+                arriveAirport = flightResult[flight],
+                viewModel = viewModel(factory = FlightsViewModel.factory)
+            )
+        }
+    }
+}
+
+@Composable
 fun LoadSearchSuggestions(
+    viewModel: FlightsViewModel,
     flightsSuggestions: List<Airport>,
     seachText: () -> Unit,
     selectedAirport: (Airport) -> Unit,
+    onClimChange: () -> Unit
 ) {
     val focusManager = LocalFocusManager.current
 
@@ -122,6 +158,7 @@ fun LoadSearchSuggestions(
                         selectedAirport(flightsSuggestions[airport])
                         seachText()
                         focusManager.clearFocus()
+                        onClimChange()
                     },
                 horizontalArrangement = Arrangement.Start
             ) {
@@ -151,7 +188,8 @@ fun LoadFlightsFromSelectedAirport(
         items(flightResult.size) { flight ->
             FlightItem(
                 departAirport = selectedAirport,
-                arriveAirport = flightResult[flight]
+                arriveAirport = flightResult[flight],
+                viewModel = viewModel(factory = FlightsViewModel.factory)
             )
         }
     }

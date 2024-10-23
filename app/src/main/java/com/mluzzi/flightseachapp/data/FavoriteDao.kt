@@ -9,13 +9,20 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface FavoriteDao {
 
-    @Insert
-    fun insertFavorite(favorite: Favorite)
+    @Query("SELECT id FROM favorite WHERE departure_code = :departureCode AND destination_code = :destinationCode")
+    suspend fun getFavoriteId(departureCode: String, destinationCode: String): Int
 
-    @Delete
-    fun deleteFavorite(favorite: Favorite)
+    @Insert
+    suspend fun insertFavorite(favorite: Favorite)
+
+    @Query("DELETE FROM favorite WHERE id = :id")
+    suspend fun deleteFavoriteById(id: Int)
 
     @Query("SELECT * FROM favorite")
     fun getAllFavorite(): Flow<List<Favorite>>
+
+    @Query("SELECT EXISTS(SELECT * FROM favorite WHERE departure_code = :departureCode AND destination_code = :destinationCode)")
+    suspend fun isFavorite(departureCode: String, destinationCode: String): Boolean
+
 
 }
