@@ -8,8 +8,15 @@ import kotlinx.coroutines.flow.Flow
 interface AirportDao {
 
     @Query("SELECT * FROM airport")
-    fun getAllFights(): Flow<List<Airport>>
+    fun getAllAirports(): Flow<List<Airport>>
 
-    @Query("SELECT * FROM airport WHERE name LIKE :query || '%'")
-    fun searchFlights(query: String): Flow<List<Airport>>
+    @Query("SELECT * FROM airport WHERE iata_code = :iataCode")
+    fun getAirportByIataCode(iataCode: String): Airport?
+
+    @Query("SELECT * FROM airport WHERE name LIKE '%' || :query || '%'")
+    fun searchAirports(query: String): Flow<List<Airport>>
+
+    @Query("SELECT * FROM airport WHERE iata_code LIKE '%' || :query || '%'")
+    fun searchAirportsByIataCode(query: String): Flow<List<Airport>>
+
 }
