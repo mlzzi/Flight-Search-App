@@ -1,5 +1,6 @@
 package com.mluzzi.flightseachapp.ui
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,7 +20,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -29,10 +32,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.mluzzi.flightseachapp.R
 import com.mluzzi.flightseachapp.data.Airport
 import com.mluzzi.flightseachapp.data.Favorite
 
@@ -48,11 +53,14 @@ fun HomeScreen(
     val selectedAirport = viewModel.selectedAirport.collectAsState().value
     var showSuggestions by remember { mutableStateOf(true) }
     val favoriteFlights = viewModel.favoriteFlights.collectAsState(initial = emptyList()).value
+    val showFavorites by remember(searchText, favoriteFlights) {
+        derivedStateOf { searchText.isEmpty() }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Nome do App") },
+                title = { Text(stringResource(R.string.flight_search_app)) },
                 colors = TopAppBarDefaults
                     .centerAlignedTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer
@@ -72,25 +80,29 @@ fun HomeScreen(
             OutlinedTextField(
                 value = searchText,
                 onValueChange = { viewModel.onSearchTextChange(it) },
-                label = { Text("Pesquisar") },
+                label = { Text(stringResource(R.string.search_flight)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .onFocusChanged { focusState ->
-                    if (focusState.isFocused) {
-                        showSuggestions = true
-                    }
-                },
+                        if (focusState.isFocused) {
+                            showSuggestions = true
+                        }
+                    },
                 shape = RoundedCornerShape(32.dp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                 keyboardActions = KeyboardActions(
                     onGo = {
                         focusManager.clearFocus()
                     }
-                )
+                ),
+                singleLine = true
             )
 
-            if (searchText.isEmpty()) {
-                LoadFavorites(favoriteFlights)
+            key(showFavorites, favoriteFlights) {
+                if (searchText.isEmpty()) {
+                    LoadFavorites(favoriteFlights, viewModel)
+                    Log.d("LoadFavorites", "LoadFavorites carregou")
+                }
             }
 
             if (searchText.isNotEmpty() && showSuggestions) {
@@ -104,7 +116,7 @@ fun HomeScreen(
             }
             if (selectedAirport != null) {
                 key(selectedAirport.iataCode) {
-                    LoadFlightsFromSelectedAirport(selectedAirport, flightsResult)
+                    LoadFlightsFromSelectedAirport(selectedAirport, flightsResult, viewModel)
                 }
             }
         }
@@ -113,7 +125,8 @@ fun HomeScreen(
 
 @Composable
 fun LoadFavorites(
-    favoriteFlights: List<Favorite>
+    favoriteFlights: List<Favorite>,
+    viewModel: FlightsViewModel
 ) {
     LazyColumn(
         modifier = Modifier
@@ -123,10 +136,26 @@ fun LoadFavorites(
         verticalArrangement = Arrangement.Top
     ) {
         items(favoriteFlights.size) { favorite ->
-            FlightItem(
-                departAirport = favoriteFlights.get(favorite).departureCode,
-                arriveAirport = flightResult[flight],
-                viewModel = viewModel(factory = FlightsViewModel.factory)
+            var departAirport by remember { mutableStateOf<Airport?>(null) }
+            var arriveAirport by remember { mutableStateOf<Airport?>(null) }
+
+            LaunchedEffect(key1 = favorite) {
+                departAirport =
+                    viewModel.getAirportByIataCode(favoriteFlights[favorite].departureCode)
+                arriveAirport =
+                    viewModel.getAirportByIataCode(favoriteFlights[favorite].destinationCode)
+            }
+
+            if (departAirport != null && arriveAirport != null) {
+                FlightItem(
+                    departAirport = departAirport!!,
+                    arriveAirport = arriveAirport!!,
+                    viewModel = viewModel(factory = FlightsViewModel.factory)
+                )
+            }
+            Log.d(
+                "Favorites dentro da condição",
+                "FlightItem should be loaded: "
             )
         }
     }
@@ -176,7 +205,8 @@ fun LoadSearchSuggestions(
 @Composable
 fun LoadFlightsFromSelectedAirport(
     selectedAirport: Airport,
-    flightResult: List<Airport>
+    flightResult: List<Airport>,
+    viewModel: FlightsViewModel
 ) {
     LazyColumn(
         modifier = Modifier
@@ -189,43 +219,8 @@ fun LoadFlightsFromSelectedAirport(
             FlightItem(
                 departAirport = selectedAirport,
                 arriveAirport = flightResult[flight],
-                viewModel = viewModel(factory = FlightsViewModel.factory)
+                viewModel = viewModel
             )
         }
     }
 }
-
-//@Preview(showBackground = true)
-//@Composable
-//fun LoadFlightsFromSelectedAirportPreview() {
-//    FlightSeachAppTheme {
-//        LoadFlightsFromSelectedAirport(
-//            selectedAirport = Airport(
-//                id = 1,
-//                iataCode = "OPO",
-//                name = "Francisco Sá Carneiro Airport",
-//                passengers = 10000000
-//            ),
-//            flights = listOf(
-//                Airport(
-//                    id = 2,
-//                    iataCode = "LIS",
-//                    name = "Humberto Delgado Airport",
-//                    passengers = 8000000
-//                ),
-//                Airport(
-//                    id = 3,
-//                    iataCode = "MAD",
-//                    name = "Adolfo Suárez Madrid–Barajas Airport",
-//                    passengers = 12000000
-//                )
-//            )
-//        )
-//    }
-//}
-
-//@Preview(showBackground = true)
-//@Composable
-//fun HomeScreenPreview() {
-//    HomeScreen()
-//}

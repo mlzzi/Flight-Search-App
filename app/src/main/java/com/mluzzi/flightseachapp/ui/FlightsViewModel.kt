@@ -2,6 +2,7 @@
 
 package com.mluzzi.flightseachapp.ui
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -51,6 +52,11 @@ class FlightsViewModel(private val flightRepositoryImpl: FlightRepositoryImpl) :
 
     fun onSearchTextChange(text: String) {
         _searchText.value = text
+        if (text.isEmpty()) {
+            _selectedAirport.value = null
+        }
+        Log.d("FlightsViewModel", "selectedAirport is now null")
+        Log.d("FlightsViewModel", "selectedAirport is: ${_selectedAirport.value}")
     }
 
     private val _selectedAirport = MutableStateFlow<Airport?>(null)
@@ -72,6 +78,11 @@ class FlightsViewModel(private val flightRepositoryImpl: FlightRepositoryImpl) :
         _selectedAirport.value = airport
     }
 
+    suspend fun getAirportByIataCode(iataCode: String): Airport? =
+        withContext(Dispatchers.IO) {
+            flightRepositoryImpl.getAirportByIataCode(iataCode)
+        }
+
     suspend fun getFavoriteId(departureCode: String, destinationCode: String): Int {
         return withContext(Dispatchers.IO) {
             flightRepositoryImpl.getFavoriteId(departureCode, destinationCode)
@@ -80,9 +91,13 @@ class FlightsViewModel(private val flightRepositoryImpl: FlightRepositoryImpl) :
 
     fun insertOrDeleteFavorite(departAirport: Airport, arriveAirport: Airport) {
         viewModelScope.launch {
-            val isFavorite = flightRepositoryImpl.isFavorite(departAirport.iataCode, arriveAirport.iataCode)
+            val isFavorite =
+                flightRepositoryImpl.isFavorite(departAirport.iataCode, arriveAirport.iataCode)
             if (isFavorite) {
-                val id = flightRepositoryImpl.getFavoriteId(departAirport.iataCode, arriveAirport.iataCode)
+                val id = flightRepositoryImpl.getFavoriteId(
+                    departAirport.iataCode,
+                    arriveAirport.iataCode
+                )
                 flightRepositoryImpl.deleteFavoriteById(id)
             } else {
                 flightRepositoryImpl.insertFavorite(

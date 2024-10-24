@@ -14,15 +14,26 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.mluzzi.flightseachapp.R
 import com.mluzzi.flightseachapp.data.Airport
+import com.mluzzi.flightseachapp.data.AirportDao
+import com.mluzzi.flightseachapp.data.Favorite
+import com.mluzzi.flightseachapp.data.FlightRepositoryImpl
 
 @Composable
 fun FlightItem(
@@ -33,14 +44,13 @@ fun FlightItem(
 ) {
     val isFavorite = viewModel.favoriteFlights.collectAsState(initial = emptyList())
         .value.any { it.departureCode == departAirport.iataCode && it.destinationCode == arriveAirport.iataCode }
-//    var id by remember { mutableStateOf(0) }
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(8.dp),
+            .padding(top = 8.dp, bottom = 8.dp),
         shape = RoundedCornerShape(topEnd = 16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.LightGray)
+        colors = CardDefaults.cardColors(containerColor = colorResource(R.color.flight_item))
     ) {
         Row(
             modifier = Modifier
@@ -49,8 +59,10 @@ fun FlightItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text("DEPART")
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(stringResource(R.string.depart))
                 Spacer(modifier = Modifier.height(4.dp))
                 Row {
                     Text(
@@ -64,7 +76,7 @@ fun FlightItem(
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("ARRIVE")
+                Text(stringResource(R.string.arrive))
                 Spacer(modifier = Modifier.height(4.dp))
                 Row {
                     Text(
@@ -80,29 +92,12 @@ fun FlightItem(
             }
             Icon(
                 imageVector = Icons.Filled.Star,
-                contentDescription = "Favorite",
+                contentDescription = stringResource(R.string.favorite),
                 modifier = Modifier.clickable {
                     viewModel.insertOrDeleteFavorite(departAirport, arriveAirport)
                 },
-                tint = if (isFavorite) Color.Yellow else Color.Gray
+                tint = if (isFavorite) colorResource(R.color.start_favorite) else Color.Gray
             )
         }
     }
 }
-
-//@Preview(showBackground = true)
-//@Composable
-//fun FlightItemPreview() {
-//    FlightItem(
-////        airport = Airport(
-////            id = 1,
-////            name = "São Paulo Guarulhos International Airport",
-////            iataCode = "GRU",
-////            passengers = 1000
-////        )
-//        flightItem = FlightItem(
-//            departAirport = "GRU",
-//            arriveAirport = "GIG"
-//        )
-//    )
-//}
