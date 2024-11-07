@@ -2,7 +2,6 @@
 
 package com.mluzzi.flightseachapp.ui
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -10,9 +9,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.mluzzi.flightseachapp.ApplicationApp
-import com.mluzzi.flightseachapp.data.Airport
-import com.mluzzi.flightseachapp.data.Favorite
-import com.mluzzi.flightseachapp.data.FlightRepositoryImpl
+import com.mluzzi.flightseachapp.data.model.Airport
+import com.mluzzi.flightseachapp.data.model.Favorite
+import com.mluzzi.flightseachapp.data.repository.FlightRepositoryImpl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -30,12 +29,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class FlightsViewModel(private val flightRepositoryImpl: FlightRepositoryImpl) : ViewModel() {
+
+    // StateFlow to hold the current search text
     private val _searchText = MutableStateFlow("")
     val searchText: StateFlow<String> = _searchText.asStateFlow()
 
+    // StateFlow to hold the list of airport suggestions based on the search text
     val flightsSuggestions: StateFlow<List<Airport>> = searchText
-        .debounce(300) // Adiciona um atraso para evitar pesquisas frequentes
-        .distinctUntilChanged() // Impede pesquisas repetidas
+        .debounce(300)
+        .distinctUntilChanged()
         .flatMapLatest { query ->
             combine(
                 flightRepositoryImpl.searchAirports(query),
@@ -50,23 +52,24 @@ class FlightsViewModel(private val flightRepositoryImpl: FlightRepositoryImpl) :
             initialValue = emptyList()
         )
 
+    // Updates the search text and clears the selected airport if the search text is empty
     fun onSearchTextChange(text: String) {
         _searchText.value = text
         if (text.isEmpty()) {
             _selectedAirport.value = null
         }
-        Log.d("FlightsViewModel", "selectedAirport is now null")
-        Log.d("FlightsViewModel", "selectedAirport is: ${_selectedAirport.value}")
     }
 
+    // StateFlow to hold the currently selected airport
     private val _selectedAirport = MutableStateFlow<Airport?>(null)
     val selectedAirport: StateFlow<Airport?> = _selectedAirport.asStateFlow()
 
+    // StateFlow to hold the list of flight results based on the selected airport
     val flightsResult: StateFlow<List<Airport>> = combine(
         flightRepositoryImpl.getAllAirports(),
         selectedAirport
     ) { allAirports, selectedAirport ->
-        allAirports.filter { it.iataCode != selectedAirport?.iataCode }
+        allAirports.filterNot { it.iataCode == selectedAirport?.iataCode }
     }
         .stateIn(
             scope = viewModelScope,
@@ -74,23 +77,20 @@ class FlightsViewModel(private val flightRepositoryImpl: FlightRepositoryImpl) :
             initialValue = emptyList()
         )
 
+    // Updates the selected airport
     fun selectAirport(airport: Airport) {
         _selectedAirport.value = airport
     }
 
+    // Retrieves an airport by its IATA code using the repository
     suspend fun getAirportByIataCode(iataCode: String): Airport? =
         withContext(Dispatchers.IO) {
             flightRepositoryImpl.getAirportByIataCode(iataCode)
         }
 
-    suspend fun getFavoriteId(departureCode: String, destinationCode: String): Int {
-        return withContext(Dispatchers.IO) {
-            flightRepositoryImpl.getFavoriteId(departureCode, destinationCode)
-        }
-    }
-
+    // Inserts or deletes a favorite flight based on whether it already exists
     fun insertOrDeleteFavorite(departAirport: Airport, arriveAirport: Airport) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val isFavorite =
                 flightRepositoryImpl.isFavorite(departAirport.iataCode, arriveAirport.iataCode)
             if (isFavorite) {
@@ -102,7 +102,7 @@ class FlightsViewModel(private val flightRepositoryImpl: FlightRepositoryImpl) :
             } else {
                 flightRepositoryImpl.insertFavorite(
                     Favorite(
-                        id = 0,  // ID será gerado automaticamente
+                        id = 0,
                         departureCode = departAirport.iataCode,
                         destinationCode = arriveAirport.iataCode
                     )
@@ -111,21 +111,10 @@ class FlightsViewModel(private val flightRepositoryImpl: FlightRepositoryImpl) :
         }
     }
 
+    // Flow to retrieve all favorite flights from the repository
     val favoriteFlights: Flow<List<Favorite>> = flightRepositoryImpl.getAllFavorites()
 
-    fun isFavorite(departureCode: String, destinationCode: String): Boolean {
-        var isFavorite = false
-        viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                if (flightRepositoryImpl.isFavorite(departureCode, destinationCode)) {
-                    isFavorite = true
-                }
-            }
-        }
-        return isFavorite
-    }
-
-
+    // Companion object to provide a factory for creating instances of the ViewModel
     companion object {
         val factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {

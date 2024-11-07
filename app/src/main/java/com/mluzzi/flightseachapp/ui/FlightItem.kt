@@ -14,26 +14,18 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mluzzi.flightseachapp.R
-import com.mluzzi.flightseachapp.data.Airport
-import com.mluzzi.flightseachapp.data.AirportDao
-import com.mluzzi.flightseachapp.data.Favorite
-import com.mluzzi.flightseachapp.data.FlightRepositoryImpl
+import com.mluzzi.flightseachapp.data.model.Airport
 
 @Composable
 fun FlightItem(
@@ -62,33 +54,12 @@ fun FlightItem(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Text(stringResource(R.string.depart))
-                Spacer(modifier = Modifier.height(4.dp))
-                Row {
-                    Text(
-                        departAirport.iataCode,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(end = 4.dp)
-                    )
-                    Text(
-                        departAirport.name,
-                        fontWeight = FontWeight.Light
-                    )
-                }
+
+                ItemRow(departAirport)
+
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(stringResource(R.string.arrive))
-                Spacer(modifier = Modifier.height(4.dp))
-                Row {
-                    Text(
-                        arriveAirport.iataCode,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(end = 4.dp)
-                    )
-                    Text(
-                        arriveAirport.name,
-                        fontWeight = FontWeight.Light
-                    )
-                }
+
+                ItemRow(arriveAirport)
             }
             Icon(
                 imageVector = Icons.Filled.Star,
@@ -99,5 +70,25 @@ fun FlightItem(
                 tint = if (isFavorite) colorResource(R.color.start_favorite) else Color.Gray
             )
         }
+    }
+}
+
+@Composable
+fun ItemRow(
+    arriveAirport: Airport,
+    modifier: Modifier = Modifier
+) {
+    Text(stringResource(R.string.arrive))
+    Spacer(modifier = Modifier.height(4.dp))
+    Row {
+        Text(
+            arriveAirport.iataCode,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(end = 4.dp)
+        )
+        Text(
+            arriveAirport.name,
+            fontWeight = FontWeight.Light
+        )
     }
 }

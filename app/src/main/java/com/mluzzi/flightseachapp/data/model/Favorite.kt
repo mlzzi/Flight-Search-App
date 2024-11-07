@@ -1,4 +1,4 @@
-package com.mluzzi.flightseachapp.data
+package com.mluzzi.flightseachapp.data.model
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity

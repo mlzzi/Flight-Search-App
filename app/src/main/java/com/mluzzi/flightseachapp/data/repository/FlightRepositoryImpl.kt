@@ -1,5 +1,9 @@
-package com.mluzzi.flightseachapp.data
+package com.mluzzi.flightseachapp.data.repository
 
+import com.mluzzi.flightseachapp.data.dao.AirportDao
+import com.mluzzi.flightseachapp.data.dao.FavoriteDao
+import com.mluzzi.flightseachapp.data.model.Airport
+import com.mluzzi.flightseachapp.data.model.Favorite
 import kotlinx.coroutines.flow.Flow
 
 class FlightRepositoryImpl(

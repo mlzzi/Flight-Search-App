@@ -1,6 +1,5 @@
 package com.mluzzi.flightseachapp.ui
 
-import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -38,27 +37,32 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mluzzi.flightseachapp.R
-import com.mluzzi.flightseachapp.data.Airport
-import com.mluzzi.flightseachapp.data.Favorite
+import com.mluzzi.flightseachapp.data.model.Airport
+import com.mluzzi.flightseachapp.data.model.Favorite
 
-@OptIn(ExperimentalMaterial3Api::class)
+// HomeScreen composable function, entry point for the screen
+@OptIn(ExperimentalMaterial3Api::class) // Opt-in for experimental Material3 APIs
 @Composable
 fun HomeScreen(
-    viewModel: FlightsViewModel = viewModel(factory = FlightsViewModel.factory)
+    viewModel: FlightsViewModel = viewModel(factory = FlightsViewModel.factory) // Inject FlightsViewModel
 ) {
+    // Collect state values from the ViewModel using collectAsState
     val searchText = viewModel.searchText.collectAsState().value
-    val focusManager = LocalFocusManager.current
+    val focusManager = LocalFocusManager.current // Get the focus manager
     val airportSuggestions = viewModel.flightsSuggestions.collectAsState().value
     val flightsResult = viewModel.flightsResult.collectAsState().value
     val selectedAirport = viewModel.selectedAirport.collectAsState().value
-    var showSuggestions by remember { mutableStateOf(true) }
+    var showSuggestions by remember { mutableStateOf(true) } // State to control suggestion visibility
     val favoriteFlights = viewModel.favoriteFlights.collectAsState(initial = emptyList()).value
+    // Derived state to show favorites when search text is empty
     val showFavorites by remember(searchText, favoriteFlights) {
         derivedStateOf { searchText.isEmpty() }
     }
 
+    // Scaffold provides the basic screen structure
     Scaffold(
         topBar = {
+            // TopAppBar for the screen title
             TopAppBar(
                 title = { Text(stringResource(R.string.flight_search_app)) },
                 colors = TopAppBarDefaults
@@ -67,7 +71,7 @@ fun HomeScreen(
                     )
             )
         }
-    ) { innerPadding ->
+    ) { innerPadding -> // Content padding provided by Scaffold
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -76,44 +80,46 @@ fun HomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-
+            // OutlinedTextField for search input
             OutlinedTextField(
                 value = searchText,
-                onValueChange = { viewModel.onSearchTextChange(it) },
+                onValueChange = { viewModel.onSearchTextChange(it) }, // Update search text in ViewModel
                 label = { Text(stringResource(R.string.search_flight)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .onFocusChanged { focusState ->
                         if (focusState.isFocused) {
-                            showSuggestions = true
+                            showSuggestions = true // Show suggestions when focused
                         }
                     },
                 shape = RoundedCornerShape(32.dp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                 keyboardActions = KeyboardActions(
                     onGo = {
-                        focusManager.clearFocus()
+                        focusManager.clearFocus() // Clear focus on "Go" action
                     }
                 ),
                 singleLine = true
             )
 
+            // Display favorites when search text is empty
             key(showFavorites, favoriteFlights) {
                 if (searchText.isEmpty()) {
                     LoadFavorites(favoriteFlights, viewModel)
-                    Log.d("LoadFavorites", "LoadFavorites carregou")
                 }
             }
 
+            // Display search suggestions when search text is not empty and suggestions are visible
             if (searchText.isNotEmpty() && showSuggestions) {
                 LoadSearchSuggestions(
-                    viewModel = viewModel,
                     flightsSuggestions = airportSuggestions,
-                    selectedAirport = { viewModel.selectAirport(it) },
-                    seachText = { selectedAirport?.iataCode?.let { viewModel.onSearchTextChange(it) } },
-                    onClimChange = { showSuggestions = false }
+                    selectedAirport = { viewModel.selectAirport(it) }, // Update selected airport in ViewModel
+                    seachText = { selectedAirport?.iataCode?.let { viewModel.onSearchTextChange(it) } }, // Update search text with selected airport
+                    onClimChange = { showSuggestions = false } // Hide suggestions on click
                 )
             }
+
+            // Display flights from selected airport if one is selected
             if (selectedAirport != null) {
                 key(selectedAirport.iataCode) {
                     LoadFlightsFromSelectedAirport(selectedAirport, flightsResult, viewModel)
@@ -123,6 +129,7 @@ fun HomeScreen(
     }
 }
 
+// Composable function to display favorite flights
 @Composable
 fun LoadFavorites(
     favoriteFlights: List<Favorite>,
@@ -139,6 +146,7 @@ fun LoadFavorites(
             var departAirport by remember { mutableStateOf<Airport?>(null) }
             var arriveAirport by remember { mutableStateOf<Airport?>(null) }
 
+            // LaunchedEffect to fetch airport details for each favorite flight
             LaunchedEffect(key1 = favorite) {
                 departAirport =
                     viewModel.getAirportByIataCode(favoriteFlights[favorite].departureCode)
@@ -146,6 +154,7 @@ fun LoadFavorites(
                     viewModel.getAirportByIataCode(favoriteFlights[favorite].destinationCode)
             }
 
+            // Display FlightItem if airport details are available
             if (departAirport != null && arriveAirport != null) {
                 FlightItem(
                     departAirport = departAirport!!,
@@ -153,17 +162,13 @@ fun LoadFavorites(
                     viewModel = viewModel(factory = FlightsViewModel.factory)
                 )
             }
-            Log.d(
-                "Favorites dentro da condição",
-                "FlightItem should be loaded: "
-            )
         }
     }
 }
 
+// Composable function to display search suggestions
 @Composable
 fun LoadSearchSuggestions(
-    viewModel: FlightsViewModel,
     flightsSuggestions: List<Airport>,
     seachText: () -> Unit,
     selectedAirport: (Airport) -> Unit,
@@ -184,10 +189,10 @@ fun LoadSearchSuggestions(
                     .fillMaxWidth()
                     .padding(bottom = 8.dp)
                     .clickable {
-                        selectedAirport(flightsSuggestions[airport])
-                        seachText()
-                        focusManager.clearFocus()
-                        onClimChange()
+                        selectedAirport(flightsSuggestions[airport]) // Update selected airport
+                        seachText() // Update search text
+                        focusManager.clearFocus() // Clear focus
+                        onClimChange() // Hide suggestions
                     },
                 horizontalArrangement = Arrangement.Start
             ) {
@@ -202,6 +207,7 @@ fun LoadSearchSuggestions(
     }
 }
 
+// Composable function to display flights from selected airport
 @Composable
 fun LoadFlightsFromSelectedAirport(
     selectedAirport: Airport,

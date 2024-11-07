@@ -1,7 +1,8 @@
-package com.mluzzi.flightseachapp.data
+package com.mluzzi.flightseachapp.data.dao
 
 import androidx.room.Dao
 import androidx.room.Query
+import com.mluzzi.flightseachapp.data.model.Airport
 import kotlinx.coroutines.flow.Flow
 
 @Dao
